@@ -116,6 +116,32 @@
       "passwordHash": "005958f6732990bfb13b2f44c8274b3ab7418dd841faebaedab2b4bfd8427bd572c5e0c32f3e33498d06d31b32ed0efbb75126908b7b00887e9dc83858a339a2",
       "salt": "56d3f925d2c1fb2b48adceb18621b858",
       "createdAt": "2026-09-13T09:53:20.852Z"
+    },
+    {
+      "id": "user-1789293912477-a7b4c060",
+      "name": "Rohit Kumar",
+      "email": "rohit.kumar@example.com",
+      "phone": "+919876543210",
+      "role": "customer",
+      "status": "active",
+      "ordersCount": 0,
+      "totalSpent": 0,
+      "passwordHash": "6c24f05566eb3d773b4455263a8624055051f9f94c602a1c96339e16d4becc5f6e5dd62f890e577735440080114468c042bffc8fc749922c67476870dc924c9b",
+      "salt": "808963469bd3ef0c13ffd5f89ef2ec71",
+      "createdAt": "2026-09-13T10:05:12.477Z"
+    },
+    {
+      "id": "user-1789294891616-4d516dbe",
+      "name": "Aayush Sharma",
+      "email": "aayush.sharma@example.com",
+      "phone": "+919811122233",
+      "role": "customer",
+      "status": "active",
+      "ordersCount": 0,
+      "totalSpent": 0,
+      "passwordHash": "a6317cd0bc6e296b716b54b17897a60769ea2f6188b5ea72fa57120cd1e3ffeca3eb79125dce9496380511200bd232ee7d10f14a291e6c4003eb3adf415a4fdf",
+      "salt": "924847e5a32a46995905bc195ba47220",
+      "createdAt": "2026-09-13T10:21:31.616Z"
     }
   ],
   "categories": [

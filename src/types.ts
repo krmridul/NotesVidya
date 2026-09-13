@@ -3,6 +3,7 @@ export type UserStatus = 'active' | 'inactive';
 
 export interface User {
   id: string;
+  uid?: string;
   name: string;
   email: string;
   phone: string;
@@ -11,6 +12,8 @@ export interface User {
   ordersCount?: number;
   totalSpent?: number;
   createdAt: string;
+  updatedAt?: string;
+  emailVerified?: boolean;
 }
 
 export interface Category {

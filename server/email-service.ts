@@ -60,7 +60,7 @@ export function getEmailProviderStatus() {
     settings.brevoSenderEmail ||
     settings.emailSenderAddress ||
     settings.contactEmail ||
-    'support@notesvidya.com';
+    'notesvidyasupport@gmail.com';
   const fromName =
     process.env.BREVO_SENDER_NAME ||
     process.env.EMAIL_FROM_NAME ||

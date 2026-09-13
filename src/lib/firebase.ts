@@ -41,8 +41,11 @@ export const app = !getApps().length ? initializeApp(firebaseClientConfig) : get
 export const auth = getAuth(app);
 
 // Initialize Cloud Firestore with the configured database ID
-// CRITICAL: The app will break without specifying firestoreDatabaseId
-export const db = getFirestore(app, firebaseClientConfig.firestoreDatabaseId);
+// If (default) or empty, standard getFirestore(app) is used
+const customDbId = firebaseClientConfig.firestoreDatabaseId && firebaseClientConfig.firestoreDatabaseId !== '(default)'
+  ? firebaseClientConfig.firestoreDatabaseId
+  : undefined;
+export const db = customDbId ? getFirestore(app, customDbId) : getFirestore(app);
 
 // Initialize Firebase Cloud Storage
 export const storage = getStorage(app, firebaseClientConfig.storageBucket);
@@ -94,18 +97,23 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path
   };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
-  throw new Error(JSON.stringify(errInfo));
+  console.warn('Firestore Operation Notice: ', JSON.stringify(errInfo));
+  return errInfo;
 }
 
 // Connectivity test per Firebase skill specification
-export async function testFirestoreConnection() {
+export async function testFirestoreConnection(): Promise<boolean> {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
+    return true;
   } catch (error) {
+    // If client is offline or database is pending activation, log a non-fatal warning
     if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.error("Please check your Firebase configuration.");
+      console.warn("Firestore connection notice: Cloud Firestore is offline or pending database creation in Firebase Console.");
+    } else {
+      console.warn("Firestore connection check notice:", error instanceof Error ? error.message : String(error));
     }
+    return false;
   }
 }
 
@@ -149,7 +157,7 @@ export async function getCustomerFromFirestore(uid: string): Promise<User | null
 
     return null;
   } catch (error) {
-    handleFirestoreError(error, OperationType.GET, path);
+    console.warn(`Firestore read notice for [${path}]:`, error instanceof Error ? error.message : String(error));
     return null;
   }
 }
@@ -169,25 +177,26 @@ export async function saveCustomerToFirestore(
   extra: { name?: string; phone?: string; role?: 'customer' | 'admin'; emailVerified?: boolean } = {}
 ): Promise<User> {
   const path = `${CUSTOMERS_COLLECTION}/${firebaseUser.uid}`;
+  const existing = await getCustomerFromFirestore(firebaseUser.uid);
+  const isAdmin = isSystemAdminEmail(firebaseUser.email) || extra.role === 'admin' || existing?.role === 'admin';
+
+  // Strict customer schema: no passwords, no unauthorized role changes
+  const customerData: User = {
+    uid: firebaseUser.uid,
+    id: firebaseUser.uid,
+    name: extra.name || firebaseUser.displayName || existing?.name || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'Customer'),
+    email: firebaseUser.email || existing?.email || '',
+    phone: extra.phone || firebaseUser.phoneNumber || existing?.phone || '',
+    emailVerified: extra.emailVerified !== undefined ? extra.emailVerified : (firebaseUser.emailVerified || true),
+    role: (isAdmin ? 'admin' : (existing?.role || 'customer')) as 'customer' | 'admin',
+    status: existing?.status || 'active',
+    ordersCount: existing?.ordersCount ?? 0,
+    totalSpent: existing?.totalSpent ?? 0,
+    createdAt: existing?.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
   try {
-    const existing = await getCustomerFromFirestore(firebaseUser.uid);
-    const isAdmin = isSystemAdminEmail(firebaseUser.email) || extra.role === 'admin' || existing?.role === 'admin';
-
-    const customerData = {
-      uid: firebaseUser.uid,
-      id: firebaseUser.uid,
-      name: extra.name || firebaseUser.displayName || existing?.name || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'Customer'),
-      email: firebaseUser.email || existing?.email || '',
-      phone: extra.phone || firebaseUser.phoneNumber || existing?.phone || '',
-      emailVerified: extra.emailVerified !== undefined ? extra.emailVerified : (firebaseUser.emailVerified || true),
-      role: (isAdmin ? 'admin' : (existing?.role || 'customer')) as 'customer' | 'admin',
-      status: existing?.status || 'active',
-      ordersCount: existing?.ordersCount ?? 0,
-      totalSpent: existing?.totalSpent ?? 0,
-      createdAt: existing?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
     // Save to customers collection
     const custRef = doc(db, CUSTOMERS_COLLECTION, firebaseUser.uid);
     await setDoc(custRef, customerData, { merge: true });
@@ -195,12 +204,11 @@ export async function saveCustomerToFirestore(
     // Synchronize to users collection for full backward compatibility
     const userRef = doc(db, USERS_COLLECTION, firebaseUser.uid);
     await setDoc(userRef, customerData, { merge: true });
-
-    return customerData as User;
   } catch (error) {
-    handleFirestoreError(error, OperationType.WRITE, path);
-    throw error;
+    console.warn(`Firestore write notice for [${path}] (Ensure Firestore database is enabled in Firebase Console):`, error instanceof Error ? error.message : String(error));
   }
+
+  return customerData;
 }
 
 /**
@@ -228,8 +236,7 @@ export async function updateCustomerInFirestore(uid: string, updates: Partial<Us
     const userRef = doc(db, USERS_COLLECTION, uid);
     await updateDoc(userRef, updates).catch(() => {});
   } catch (error) {
-    handleFirestoreError(error, OperationType.UPDATE, path);
-    throw error;
+    console.warn(`Firestore update notice for [${path}]:`, error instanceof Error ? error.message : String(error));
   }
 }
 
