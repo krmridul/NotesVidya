@@ -39,6 +39,7 @@ import {
 } from '../types.js';
 import { api } from '../lib/api.js';
 import { useToast } from '../context/ToastContext.js';
+import { useAuth } from '../context/AuthContext.js';
 
 interface AdminPanelProps {
   onBackToStore: () => void;
@@ -46,6 +47,7 @@ interface AdminPanelProps {
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
   const { showToast } = useToast();
+  const { user, loading: authLoading, isAdmin } = useAuth();
   const [activeTab, setActiveTab] = useState<
     'dashboard' | 'products' | 'stock' | 'categories' | 'customers' | 'orders' | 'payments' | 'coupons' | 'reviews' | 'emails' | 'settings'
   >('dashboard');
@@ -110,8 +112,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
   };
 
   useEffect(() => {
-    loadAllData();
-  }, []);
+    if (!authLoading && user && (isAdmin || user.role === 'admin')) {
+      loadAllData();
+    }
+  }, [authLoading, user, isAdmin]);
 
   const loadAllData = async () => {
     setLoading(true);
@@ -302,6 +306,43 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onBackToStore }) => {
       showToast(err.message, 'error');
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white">
+        <div className="flex items-center gap-3">
+          <RefreshCw className="w-6 h-6 animate-spin text-indigo-400" />
+          <span className="font-bold text-slate-300">Verifying administrative access...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || (!isAdmin && user.role !== 'admin')) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 text-white text-center">
+        <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl">
+          <div className="w-16 h-16 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 text-rose-400">
+            <AlertTriangle className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-black tracking-tight">Admin Access Restricted</h2>
+          <p className="text-slate-400 text-xs sm:text-sm mt-2 leading-relaxed">
+            {!user
+              ? 'You must be signed in with administrator credentials to access the store management system.'
+              : 'Your current account does not have administrator privileges. Customer accounts cannot access the admin panel.'}
+          </p>
+          <div className="mt-6 flex flex-col gap-3">
+            <button
+              onClick={onBackToStore}
+              className="w-full py-2.5 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs sm:text-sm transition-all cursor-pointer"
+            >
+              Return to NotesVidya Store
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col">

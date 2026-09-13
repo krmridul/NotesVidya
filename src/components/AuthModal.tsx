@@ -9,8 +9,13 @@ import {
   ShieldCheck,
   ShieldAlert,
   KeyRound,
-  BookOpen
+  BookOpen,
+  CheckCircle2,
+  RefreshCw,
+  Edit3,
+  Check
 } from 'lucide-react';
+import confetti from 'canvas-confetti';
 import { useAuth } from '../context/AuthContext.js';
 import { useToast } from '../context/ToastContext.js';
 import { api } from '../lib/api.js';
@@ -26,9 +31,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onClose,
   onSuccess
 }) => {
-  const [mode, setMode] = useState<'login' | 'register' | 'forgot-password' | 'admin-setup'>(initialMode);
+  const [mode, setMode] = useState<
+    'login' | 'register' | 'otp-verify' | 'success' | 'forgot-password' | 'admin-setup'
+  >(initialMode);
   const [needsAdminSetup, setNeedsAdminSetup] = useState(false);
-  const { login, loginWithGoogle, register, setupAdmin, resetPassword } = useAuth();
+  const { login, loginWithGoogle, activateCustomerAccount, setupAdmin, resetPassword } = useAuth();
   const { showToast } = useToast();
 
   const [loading, setLoading] = useState(false);
@@ -40,6 +47,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
+  // OTP Verification states
+  const [otp, setOtp] = useState('');
+  const [registrationId, setRegistrationId] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [otpExpiresAt, setOtpExpiresAt] = useState<number | null>(null);
+  const [timeRemaining, setTimeRemaining] = useState<string>('10:00');
+  const [emailDeliveryWarning, setEmailDeliveryWarning] = useState<{
+    isIpRestricted: boolean;
+    detectedIp?: string;
+    actionUrl?: string;
+    message: string;
+  } | null>(null);
+
   useEffect(() => {
     api.checkNeedsAdminSetup()
       .then(res => {
@@ -49,6 +69,34 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       })
       .catch(() => {});
   }, []);
+
+  // Countdown timer for OTP expiry
+  useEffect(() => {
+    if (mode !== 'otp-verify' || !otpExpiresAt) return;
+
+    const timer = setInterval(() => {
+      const remaining = Math.max(0, otpExpiresAt - Date.now());
+      if (remaining <= 0) {
+        setTimeRemaining('00:00');
+        clearInterval(timer);
+      } else {
+        const mins = Math.floor(remaining / 60000);
+        const secs = Math.floor((remaining % 60000) / 1000);
+        setTimeRemaining(`${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`);
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [mode, otpExpiresAt]);
+
+  // Resend cooldown timer
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const interval = setInterval(() => {
+      setResendCooldown(prev => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [resendCooldown]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,16 +108,36 @@ export const AuthModal: React.FC<AuthModalProps> = ({
       onClose();
     } catch (err: any) {
       let msg = 'Failed to sign in. Please check your credentials.';
+      const errCode = err.code || '';
+      const errMsg = err.message || '';
+
       if (
-        err.code === 'auth/invalid-credential' ||
-        err.code === 'auth/user-not-found' ||
-        err.code === 'auth/wrong-password'
+        errCode === 'auth/invalid-credential' ||
+        errCode === 'auth/wrong-password' ||
+        errMsg.toLowerCase().includes('password')
       ) {
         msg = 'Invalid email or password. Please verify and try again.';
-      } else if (err.code === 'auth/too-many-requests') {
-        msg = 'Too many failed attempts. Please try again later or reset password.';
-      } else if (err.message) {
-        msg = err.message;
+      } else if (
+        errCode === 'auth/user-not-found' ||
+        errMsg.toLowerCase().includes('user not found')
+      ) {
+        msg = 'No customer account found with this email. Please create an account.';
+      } else if (
+        errCode === 'auth/user-disabled' ||
+        errMsg.toLowerCase().includes('disabled')
+      ) {
+        msg = 'This account has been disabled. Please contact support@notesvidya.com.';
+      } else if (
+        errCode === 'auth/network-request-failed' ||
+        errMsg.toLowerCase().includes('network')
+      ) {
+        msg = 'Network connection issue. Please check your internet connection.';
+      } else if (errCode === 'auth/too-many-requests') {
+        msg = 'Too many failed login attempts. Please try again later or reset password.';
+      } else if (errCode === 'auth/invalid-email') {
+        msg = 'Please enter a valid email address.';
+      } else if (errMsg) {
+        msg = errMsg;
       }
       showToast(msg, 'error');
     } finally {
@@ -93,6 +161,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     }
   };
 
+  // Step 1: Customer enters details -> server validates & Brevo sends 6-digit OTP
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -114,24 +183,98 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
     setLoading(true);
     try {
-      await register({
+      const res = await api.initiateRegistration({
         name: name.trim(),
         email: cleanEmail,
+        phone: phone.trim(),
+        password,
+        confirmPassword
+      });
+
+      setRegistrationId(res.registrationId);
+      setOtpExpiresAt(res.expiresAt || (Date.now() + 600000));
+      setResendCooldown(60);
+      setEmailDeliveryWarning(res.emailDeliveryWarning || null);
+      setOtp('');
+
+      setMode('otp-verify');
+      showToast(`Verification code sent to ${cleanEmail}`, 'success');
+    } catch (err: any) {
+      let msg = err.message || 'Registration failed. Please try again.';
+      if (err.code === 'auth/email-already-in-use' || msg.includes('already exists')) {
+        msg = 'An account with this email already exists. Please sign in.';
+      }
+      showToast(msg, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Step 2: Customer enters OTP -> server verifies OTP -> Firebase Account & Firestore doc created
+  const handleOtpVerifySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const cleanOtp = otp.trim();
+    if (cleanOtp.length !== 6 || !/^\d{6}$/.test(cleanOtp)) {
+      showToast('Please enter a valid 6-digit OTP code.', 'error');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // 1. Server verifies OTP cryptographically
+      await api.verifyOtp({
+        registrationId,
+        email: email.trim().toLowerCase(),
+        otp: cleanOtp
+      });
+
+      // 2. Create/activate customer account in Firebase Authentication & Cloud Firestore
+      await activateCustomerAccount({
+        name: name.trim(),
+        email: email.trim().toLowerCase(),
         phone: phone.trim(),
         password
       });
 
-      showToast('Account created and saved to Cloud Firestore!', 'success');
-      if (onSuccess) onSuccess();
-      onClose();
-    } catch (err: any) {
-      let msg = err.message || 'Registration failed. Please try again.';
-      if (err.code === 'auth/email-already-in-use') {
-        msg = 'An account with this email already exists. Please sign in.';
-      } else if (err.code === 'auth/weak-password') {
-        msg = 'Password should be at least 6 characters.';
+      // 3. Trigger celebration confetti
+      try {
+        confetti({
+          particleCount: 80,
+          spread: 70,
+          origin: { y: 0.6 }
+        });
+      } catch {
+        // ignore confetti errors
       }
+
+      // 4. Move to Successfully Created screen
+      setMode('success');
+      showToast('Account successfully verified and activated in Firebase!', 'success');
+    } catch (err: any) {
+      const msg = err.message || 'Invalid verification code. Please try again.';
       showToast(msg, 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0 || loading) return;
+
+    setLoading(true);
+    try {
+      const res = await api.resendOtp({
+        registrationId,
+        email: email.trim().toLowerCase()
+      });
+
+      setOtpExpiresAt(res.expiresAt || (Date.now() + 600000));
+      setResendCooldown(60);
+      setEmailDeliveryWarning(res.emailDeliveryWarning || null);
+      showToast('A new 6-digit verification code has been sent!', 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to resend code. Please try again.', 'error');
     } finally {
       setLoading(false);
     }
@@ -222,7 +365,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         )}
 
         {/* Navigation Mode Switcher */}
-        {mode !== 'admin-setup' && mode !== 'forgot-password' ? (
+        {mode === 'login' || mode === 'register' ? (
           <div className="grid grid-cols-2 p-1.5 bg-slate-100 mx-5 mt-4 rounded-xl text-xs font-bold text-slate-600">
             <button
               onClick={() => setMode('login')}
@@ -240,6 +383,28 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             >
               Create Account
             </button>
+          </div>
+        ) : mode === 'otp-verify' ? (
+          <div className="mx-5 mt-4 flex items-center justify-between">
+            <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-700 uppercase tracking-wider">
+              <KeyRound className="w-4 h-4" />
+              <span>Step 2: Email OTP Verification</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setMode('register')}
+              className="text-xs text-slate-500 hover:text-indigo-600 font-semibold flex items-center gap-1 cursor-pointer"
+            >
+              <Edit3 className="w-3.5 h-3.5" />
+              <span>Edit Details</span>
+            </button>
+          </div>
+        ) : mode === 'success' ? (
+          <div className="mx-5 mt-4 flex items-center justify-center">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-bold border border-emerald-200">
+              <Check className="w-3.5 h-3.5" />
+              Account Created & Verified
+            </span>
           </div>
         ) : mode === 'admin-setup' ? (
           <div className="mx-5 mt-4 flex items-center justify-between">
@@ -364,7 +529,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             </div>
           )}
 
-          {/* REGISTRATION MODE */}
+          {/* REGISTRATION MODE - Step 1 */}
           {mode === 'register' && (
             <div className="space-y-3.5">
               {/* Google One-Click Sign Up */}
@@ -398,7 +563,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <div className="relative my-3 flex items-center justify-center">
                 <div className="border-t border-slate-200 w-full" />
                 <span className="bg-white px-2.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                  or with email
+                  or with email & OTP
                 </span>
               </div>
 
@@ -478,10 +643,152 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   id="register-submit-btn"
                   className="w-full py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 transition-all cursor-pointer flex items-center justify-center gap-2 mt-2"
                 >
-                  <span>{loading ? 'Creating Account in Firebase...' : 'Create Account'}</span>
+                  <span>{loading ? 'Sending Brevo OTP...' : 'Send Verification OTP'}</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
               </form>
+            </div>
+          )}
+
+          {/* OTP VERIFICATION MODE - Step 2 */}
+          {mode === 'otp-verify' && (
+            <div className="space-y-4">
+              <div className="p-3.5 bg-indigo-50/70 border border-indigo-100 rounded-2xl text-center">
+                <p className="text-xs text-indigo-950 font-medium leading-relaxed">
+                  We have sent a secure 6-digit verification code to:
+                </p>
+                <p className="text-sm font-bold text-indigo-700 mt-0.5">{email}</p>
+                <div className="mt-2 flex items-center justify-center gap-1.5 text-xs text-indigo-600 font-semibold">
+                  <span>Code expires in:</span>
+                  <span className="font-mono bg-white px-2 py-0.5 rounded-md border border-indigo-200">
+                    {timeRemaining}
+                  </span>
+                </div>
+              </div>
+
+              {emailDeliveryWarning?.isIpRestricted && (
+                <div className="p-2.5 bg-amber-50 rounded-xl border border-amber-200 text-xs text-amber-900 leading-relaxed">
+                  <div className="flex items-center gap-1.5 font-bold mb-0.5">
+                    <ShieldAlert className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                    <span>Brevo Delivery Notice</span>
+                  </div>
+                  <span>{emailDeliveryWarning.message}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleOtpVerifySubmit} className="space-y-3.5">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1 text-center">
+                    Enter 6-Digit Verification Code
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={6}
+                    pattern="[0-9]{6}"
+                    inputMode="numeric"
+                    autoFocus
+                    value={otp}
+                    onChange={e => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="123456"
+                    className="w-full text-center tracking-[0.4em] font-mono text-xl py-2.5 px-4 border-2 border-indigo-200 focus:border-indigo-600 rounded-xl focus:outline-hidden transition-colors"
+                    required
+                  />
+                </div>
+
+                <div className="flex items-center justify-between text-xs pt-1">
+                  <button
+                    type="button"
+                    onClick={handleResendOtp}
+                    disabled={resendCooldown > 0 || loading}
+                    className={`font-semibold flex items-center gap-1 cursor-pointer ${
+                      resendCooldown > 0
+                        ? 'text-slate-400 cursor-not-allowed'
+                        : 'text-indigo-600 hover:text-indigo-800'
+                    }`}
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                    <span>
+                      {resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : 'Resend Verification Code'}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMode('register')}
+                    className="text-slate-500 hover:text-slate-700"
+                  >
+                    Change email
+                  </button>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading || otp.length !== 6}
+                  id="verify-otp-btn"
+                  className="w-full py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white shadow-md shadow-indigo-600/20 transition-all cursor-pointer flex items-center justify-center gap-2 mt-3"
+                >
+                  <span>{loading ? 'Activating Firebase Account...' : 'Verify & Activate Account'}</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </form>
+            </div>
+          )}
+
+          {/* SUCCESS SCREEN - "Successfully Created" */}
+          {mode === 'success' && (
+            <div className="text-center py-2 space-y-4">
+              <div className="w-14 h-14 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-inner animate-in zoom-in-50 duration-300">
+                <CheckCircle2 className="w-8 h-8" />
+              </div>
+
+              <div>
+                <h3 className="text-lg font-black text-slate-900">Successfully Created!</h3>
+                <p className="text-xs text-slate-600 mt-1 max-w-xs mx-auto leading-relaxed">
+                  Your NotesVidya customer account has been created and verified with Firebase Authentication & Cloud Firestore.
+                </p>
+              </div>
+
+              <div className="p-3 bg-slate-50 border border-slate-200/80 rounded-2xl text-left text-xs space-y-1.5">
+                <div className="flex items-center justify-between text-slate-600">
+                  <span>Customer Name</span>
+                  <span className="font-bold text-slate-900">{name || 'Customer'}</span>
+                </div>
+                <div className="flex items-center justify-between text-slate-600">
+                  <span>Email</span>
+                  <span className="font-bold text-slate-900">{email}</span>
+                </div>
+                <div className="flex items-center justify-between text-slate-600">
+                  <span>Account Status</span>
+                  <span className="inline-flex items-center gap-1 font-bold text-emerald-600">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    Active & Verified
+                  </span>
+                </div>
+                <div className="flex items-center justify-between text-slate-600">
+                  <span>Firestore Profile</span>
+                  <span className="font-mono text-[11px] text-indigo-600 font-semibold">customers/{email.split('@')[0]}</span>
+                </div>
+              </div>
+
+              <div className="pt-2 flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onSuccess) onSuccess();
+                    onClose();
+                  }}
+                  className="w-full py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <span>Continue to Store & Dashboard</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMode('login')}
+                  className="text-xs text-slate-500 hover:text-indigo-600 font-semibold py-1"
+                >
+                  Sign in with another account
+                </button>
+              </div>
             </div>
           )}
 
@@ -614,3 +921,4 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     </div>
   );
 };
+

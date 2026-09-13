@@ -23,7 +23,7 @@ import { SecurePdfViewerModal } from './components/SecurePdfViewerModal.js';
 import { Product, Order } from './types.js';
 
 const MainAppContent: React.FC = () => {
-  const { user } = useAuth();
+  const { user, isAdmin, loading: authLoading } = useAuth();
   const { addToCart } = useCart();
   const { showToast } = useToast();
 
@@ -45,6 +45,54 @@ const MainAppContent: React.FC = () => {
     setIsAuthModalOpen(true);
   };
 
+  // Synchronize browser URL hash with view and enforce route protection
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace(/^#\/?/, '').trim();
+      if (!hash) return;
+
+      if (hash === 'admin') {
+        if (!user && !authLoading) {
+          showToast('Please sign in with administrator credentials.', 'info');
+          handleOpenAuth('login');
+          setCurrentView('home');
+          window.location.hash = '';
+          return;
+        }
+        if (user && !isAdmin && user.role !== 'admin') {
+          showToast('Access denied: Administrator privileges required.', 'error');
+          setCurrentView('home');
+          window.location.hash = '';
+          return;
+        }
+        setCurrentView('admin');
+        return;
+      }
+
+      if (hash === 'dashboard' || hash === 'orders' || hash === 'my-account') {
+        if (!user && !authLoading) {
+          showToast('Please sign in to access your customer dashboard.', 'info');
+          handleOpenAuth('login');
+          setCurrentView('home');
+          window.location.hash = '';
+          return;
+        }
+        if (hash === 'orders') setDashboardTab('orders');
+        else setDashboardTab('purchased-pdfs');
+        setCurrentView('dashboard');
+        return;
+      }
+
+      if (['cart', 'checkout', 'all-pdfs', 'about', 'contact', 'faq', 'privacy', 'terms', 'refund', 'disclaimer'].includes(hash)) {
+        setCurrentView(hash);
+      }
+    };
+
+    handleHashChange();
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [user, isAdmin, authLoading]);
+
   // Scroll to top on navigation
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -59,22 +107,40 @@ const MainAppContent: React.FC = () => {
       }
       setDashboardTab('orders');
       setCurrentView('dashboard');
+      window.location.hash = 'orders';
       return;
     }
 
-    if (view === 'my-account') {
+    if (view === 'my-account' || view === 'dashboard') {
       if (!user) {
         handleOpenAuth('login');
-        showToast('Please sign in to access your account', 'info');
+        showToast('Please sign in to access your account dashboard', 'info');
         return;
       }
       setDashboardTab('purchased-pdfs');
       setCurrentView('dashboard');
+      window.location.hash = 'dashboard';
+      return;
+    }
+
+    if (view === 'admin') {
+      if (!user) {
+        handleOpenAuth('login');
+        showToast('Please sign in with administrator credentials', 'info');
+        return;
+      }
+      if (!isAdmin && user.role !== 'admin') {
+        showToast('Access denied: Administrator privileges required', 'error');
+        return;
+      }
+      setCurrentView('admin');
+      window.location.hash = 'admin';
       return;
     }
 
     setViewParam(param || '');
     setCurrentView(view);
+    window.location.hash = view === 'home' ? '' : view;
   };
 
   const handleViewProduct = (product: Product) => {

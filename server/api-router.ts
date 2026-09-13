@@ -384,7 +384,7 @@ apiRouter.post('/auth/verify-otp', (req: Request, res: Response) => {
     let isMatch = verifyOtpHash(cleanOtp, pending.otpHash, pending.otpSalt);
 
     // If Brevo delivery was restricted by Brevo IP security during testing, permit sandbox code 123456
-    if (!isMatch && pending.deliveryRestricted && (cleanOtp === '123456' || cleanOtp === '000000')) {
+    if (!isMatch && pending.deliveryRestricted && cleanOtp === '123456') {
       isMatch = true;
     }
 

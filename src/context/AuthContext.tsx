@@ -11,6 +11,9 @@ import {
   sendPasswordResetEmail,
   updateProfile,
   onAuthStateChanged,
+  getCustomerFromFirestore,
+  saveCustomerToFirestore,
+  updateCustomerInFirestore,
   getUserFromFirestore,
   saveUserToFirestore,
   updateUserInFirestore,
@@ -26,6 +29,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: () => Promise<void>;
   register: (data: { name: string; email: string; phone: string; password: string; confirmPassword?: string }) => Promise<void>;
+  activateCustomerAccount: (data: { name: string; email: string; phone: string; password: string }) => Promise<User | null>;
   setupAdmin: (data: { name: string; email: string; phone: string; password: string }) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   setAuthSession: (user: User, token: string) => void;
@@ -56,17 +60,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setToken(idToken);
           localStorage.setItem('dps_token', idToken);
 
-          // Retrieve user document from Cloud Firestore
-          let profile = await getUserFromFirestore(firebaseUser.uid);
+          // Retrieve customer document from Cloud Firestore
+          let profile = await getCustomerFromFirestore(firebaseUser.uid);
           if (!profile) {
-            // First time sign-in or doc not initialized -> create in Firestore
-            profile = await saveUserToFirestore(firebaseUser);
+            // First time sign-in or doc not initialized -> create in Firestore customers collection
+            profile = await saveCustomerToFirestore(firebaseUser);
           }
 
           // If designated admin email, ensure admin privileges
           if (isSystemAdminEmail(firebaseUser.email) && profile.role !== 'admin') {
             profile = { ...profile, role: 'admin' };
-            await updateUserInFirestore(profile.id, { role: 'admin' });
+            await updateCustomerInFirestore(profile.id, { role: 'admin' });
           }
 
           setUser(profile);
@@ -124,32 +128,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(true);
     try {
       let firebaseSuccess = false;
+      let fbError: any = null;
+
       try {
         const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
         const idToken = await userCredential.user.getIdToken();
-        setToken(idToken);
-        localStorage.setItem('dps_token', idToken);
 
-        let profile = await getUserFromFirestore(userCredential.user.uid);
+        let profile = await getCustomerFromFirestore(userCredential.user.uid);
         if (!profile) {
-          profile = await saveUserToFirestore(userCredential.user);
+          profile = await saveCustomerToFirestore(userCredential.user);
         }
+
+        // Check account status
+        if (profile.status === 'inactive') {
+          await fbSignOut(auth);
+          localStorage.removeItem('dps_token');
+          setToken(null);
+          setUser(null);
+          throw new Error('This account has been disabled. Please contact support@notesvidya.com.');
+        }
+
         if (isSystemAdminEmail(userCredential.user.email) && profile.role !== 'admin') {
           profile = { ...profile, role: 'admin' };
-          await updateUserInFirestore(profile.id, { role: 'admin' });
+          await updateCustomerInFirestore(profile.id, { role: 'admin' });
         }
+
+        setToken(idToken);
+        localStorage.setItem('dps_token', idToken);
         setUser(profile);
         firebaseSuccess = true;
       } catch (fbErr: any) {
-        // Fallback to server API if Firebase email/password provider is not configured
-        console.warn('Firebase signIn notice (attempting backend authentication):', fbErr?.code || fbErr?.message);
+        fbError = fbErr;
+        // If account is disabled error, propagate immediately
+        if (fbErr.message?.includes('disabled') || fbErr.code === 'auth/user-disabled') {
+          throw new Error('This account has been disabled. Please contact support@notesvidya.com.');
+        }
       }
 
       if (!firebaseSuccess) {
-        const res = await api.login({ email: email.trim(), password });
-        setToken(res.token);
-        localStorage.setItem('dps_token', res.token);
-        setUser(res.user);
+        try {
+          const res = await api.login({ email: email.trim(), password });
+          if (res?.user?.status === 'inactive') {
+            throw new Error('This account has been disabled. Please contact support@notesvidya.com.');
+          }
+          setToken(res.token);
+          localStorage.setItem('dps_token', res.token);
+          setUser(res.user);
+        } catch (apiErr: any) {
+          if (fbError && (fbError.code?.startsWith('auth/') || fbError.message)) {
+            throw fbError;
+          }
+          throw apiErr;
+        }
       }
     } finally {
       setLoading(false);
@@ -161,62 +191,104 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const userCredential = await signInWithPopup(auth, googleProvider);
       const idToken = await userCredential.user.getIdToken();
-      setToken(idToken);
-      localStorage.setItem('dps_token', idToken);
 
-      let profile = await getUserFromFirestore(userCredential.user.uid);
+      let profile = await getCustomerFromFirestore(userCredential.user.uid);
       if (!profile) {
-        profile = await saveUserToFirestore(userCredential.user);
+        profile = await saveCustomerToFirestore(userCredential.user);
       }
+
+      if (profile.status === 'inactive') {
+        await fbSignOut(auth);
+        localStorage.removeItem('dps_token');
+        setToken(null);
+        setUser(null);
+        throw new Error('This account has been disabled. Please contact support@notesvidya.com.');
+      }
+
       if (isSystemAdminEmail(userCredential.user.email) && profile.role !== 'admin') {
         profile = { ...profile, role: 'admin' };
-        await updateUserInFirestore(profile.id, { role: 'admin' });
+        await updateCustomerInFirestore(profile.id, { role: 'admin' });
       }
+
+      setToken(idToken);
+      localStorage.setItem('dps_token', idToken);
       setUser(profile);
     } finally {
       setLoading(false);
     }
   };
 
-  const register = async (data: { name: string; email: string; phone: string; password: string; confirmPassword?: string }) => {
+  /**
+   * Activates a customer account in Firebase Auth and Cloud Firestore after OTP verification
+   */
+  const activateCustomerAccount = async (data: {
+    name: string;
+    email: string;
+    phone: string;
+    password: string;
+  }): Promise<User | null> => {
     setLoading(true);
     try {
-      let registered = false;
+      let firebaseUser: any = null;
       try {
         const userCredential = await createUserWithEmailAndPassword(auth, data.email.trim(), data.password);
+        firebaseUser = userCredential.user;
+      } catch (createErr: any) {
+        if (createErr.code === 'auth/email-already-in-use') {
+          // If already created, sign in to link session
+          try {
+            const userCredential = await signInWithEmailAndPassword(auth, data.email.trim(), data.password);
+            firebaseUser = userCredential.user;
+          } catch {
+            // ignore
+          }
+        } else {
+          console.warn('Firebase createUser notice:', createErr.code || createErr.message);
+        }
+      }
+
+      if (firebaseUser) {
         if (data.name) {
           try {
-            await updateProfile(userCredential.user, { displayName: data.name.trim() });
+            await updateProfile(firebaseUser, { displayName: data.name.trim() });
           } catch {
-            // ignore profile update error
+            // ignore
           }
         }
 
-        const isAdmin = isSystemAdminEmail(data.email);
-        const profile = await saveUserToFirestore(userCredential.user, {
+        const idToken = await firebaseUser.getIdToken();
+        const profile = await saveCustomerToFirestore(firebaseUser, {
           name: data.name.trim(),
           phone: data.phone.trim(),
-          role: isAdmin ? 'admin' : 'customer'
+          role: 'customer',
+          emailVerified: true
         });
 
-        const idToken = await userCredential.user.getIdToken();
         setToken(idToken);
         localStorage.setItem('dps_token', idToken);
         setUser(profile);
-        registered = true;
-      } catch (fbErr: any) {
-        console.warn('Firebase registration notice (attempting backend registration):', fbErr?.code || fbErr?.message);
+        return profile;
       }
 
-      if (!registered) {
-        const res = await api.register(data);
-        setToken(res.token);
-        localStorage.setItem('dps_token', res.token);
-        setUser(res.user);
+      // If client Firebase Auth threw (e.g. offline preview), retrieve active user
+      const meRes = await api.getMe().catch(() => null);
+      if (meRes?.user) {
+        setUser(meRes.user);
+        return meRes.user;
       }
+      return null;
     } finally {
       setLoading(false);
     }
+  };
+
+  const register = async (data: { name: string; email: string; phone: string; password: string; confirmPassword?: string }) => {
+    return activateCustomerAccount({
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      password: data.password
+    });
   };
 
   const setupAdmin = async (data: { name: string; email: string; phone: string; password: string }) => {
@@ -304,6 +376,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         login,
         loginWithGoogle,
         register,
+        activateCustomerAccount,
         setupAdmin,
         resetPassword,
         setAuthSession,

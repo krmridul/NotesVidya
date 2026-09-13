@@ -64,6 +64,58 @@
       "createdAt": "2026-09-13T09:08:56.160Z",
       "passwordHash": "fbed335bb9fb3f6211afae9f7cc6061534b624d4b49e25c77e0c70bd3bdabf06042dfce5228cbf8508ed7ab4fa54e4fc781b931f1319ef05debcb6ab1c5f0cca",
       "salt": "9bbf56a82987ca79864d08f07b2e13e2"
+    },
+    {
+      "id": "usr-1789292301356-0zsc9",
+      "name": "Test Student",
+      "email": "invalid-email",
+      "phone": "",
+      "role": "customer",
+      "status": "active",
+      "ordersCount": 0,
+      "totalSpent": 0,
+      "createdAt": "2026-09-13T09:38:21.356Z",
+      "passwordHash": "7afc895f6ef80d00b7b10a4afb5fc8d49f9ef4366f9b97bd263b154729c5bc69f41d8dcaacf1b9e5ac161975376e363fa0b61724ea51b6bfb7fcb8511cda1dc4",
+      "salt": "85d6df9aa10172dfe9e5f44457f3412f"
+    },
+    {
+      "id": "user-1789292333822-1c6c1e09",
+      "name": "Priya Sharma",
+      "email": "priya.student@example.com",
+      "phone": "+919876543210",
+      "role": "customer",
+      "status": "active",
+      "ordersCount": 0,
+      "totalSpent": 0,
+      "passwordHash": "511dde00c52d2ea437d1b7b47bb7c297e5a58bc5605cfa2e9ade34cacd90700f76cdc7ef6a645b153859bd2d844949577d8f7d37dc785adc442219408a12dea7",
+      "salt": "3e6a964c1ef1515f039a96423cf71fe3",
+      "createdAt": "2026-09-13T09:38:53.822Z"
+    },
+    {
+      "id": "user-1789292365426-8fdf0ea7",
+      "name": "Rahul Verma",
+      "email": "rahul.verma@example.com",
+      "phone": "+919811122233",
+      "role": "customer",
+      "status": "active",
+      "ordersCount": 0,
+      "totalSpent": 0,
+      "passwordHash": "ee8ae8d8bb04754f35f6631f8b973bee890fa99d7f307d285df6a6cd432f82b4b950b101439e6e3c1bf2d5be7def865bf914561f57c3d9bf0b3a103e46392203",
+      "salt": "ceb43da6d3b2f795acc1d7c9ec5a1b3d",
+      "createdAt": "2026-09-13T09:39:25.426Z"
+    },
+    {
+      "id": "user-1789293200852-7d5b9df9",
+      "name": "Aarav Patel",
+      "email": "aarav.patel@example.com",
+      "phone": "+919876500000",
+      "role": "customer",
+      "status": "active",
+      "ordersCount": 0,
+      "totalSpent": 0,
+      "passwordHash": "005958f6732990bfb13b2f44c8274b3ab7418dd841faebaedab2b4bfd8427bd572c5e0c32f3e33498d06d31b32ed0efbb75126908b7b00887e9dc83858a339a2",
+      "salt": "56d3f925d2c1fb2b48adceb18621b858",
+      "createdAt": "2026-09-13T09:53:20.852Z"
     }
   ],
   "categories": [
@@ -392,40 +444,5 @@
       "sentAt": "2026-09-13T05:19:06.698Z"
     }
   ],
-  "pendingRegistrations": [
-    {
-      "id": "preg-1789288411736-8e137466",
-      "name": "Test Customer 2",
-      "email": "testuser_1789288411598@example.com",
-      "phone": "+91 9876543210",
-      "passwordHash": "03bed54fc4db7c81572700dbd28a1d2723a99d6694c29d70069888ad4c9cb6912a8d17469b7a21e40aca884c927bee55c7aa7d1377cd65bdb71c486ed24877a2",
-      "salt": "ee8b3a64e22c6cc599ce194b68d71466",
-      "otpHash": "78cada91354210875918fb09b00a0156e0ac4a04f09dcf21109d568386c03af9",
-      "otpSalt": "e6f566d80d4354e7478e0aa297722e8a",
-      "otpExpiresAt": 1789289011736,
-      "otpAttempts": 1,
-      "resendCount": 1,
-      "lastOtpSentAt": 1789288411736,
-      "emailVerified": false,
-      "createdAt": "2026-09-13T08:33:31.736Z",
-      "deliveryRestricted": true
-    },
-    {
-      "id": "preg-1789288414815-677b763c",
-      "name": "Test Customer 3",
-      "email": "testuser_1789288414683@example.com",
-      "phone": "+91 9876543210",
-      "passwordHash": "cce9100a5ce741cbc71d2d402f4927bee22335fdbfb8c059a0a4f3f5004ea429ad916c4395a7bcbce7c5494f99a5890706a4b1ae73342b50da425d0f65ccfe4b",
-      "salt": "a385d5473afd64791e67884bd39287f0",
-      "otpHash": "8a48a227864ed9975ddd00f0cb4813916a1b56f11c8fbcef89eade4a988fb6a6",
-      "otpSalt": "1372d0511ff1cb19bd5dd551113a678f",
-      "otpExpiresAt": 1789289014815,
-      "otpAttempts": 0,
-      "resendCount": 1,
-      "lastOtpSentAt": 1789288414815,
-      "emailVerified": false,
-      "createdAt": "2026-09-13T08:33:34.815Z",
-      "deliveryRestricted": true
-    }
-  ]
+  "pendingRegistrations": []
 }

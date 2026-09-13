@@ -1,5 +1,69 @@
 {
   "entities": {
+    "Customer": {
+      "title": "Customer",
+      "description": "Customer profile document stored in Firestore indexed by Firebase Auth UID",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID of customer",
+          "maxLength": 128
+        },
+        "id": {
+          "type": "string",
+          "description": "Customer unique identifier matching UID",
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "description": "Full name of the customer",
+          "maxLength": 100
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Email address of the customer",
+          "maxLength": 150
+        },
+        "phone": {
+          "type": "string",
+          "description": "Contact phone number of the customer",
+          "maxLength": 30
+        },
+        "emailVerified": {
+          "type": "boolean",
+          "description": "Whether customer email was verified via OTP"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["customer", "admin"],
+          "description": "Role of the user in the system"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "inactive"],
+          "description": "Account status"
+        },
+        "ordersCount": {
+          "type": "number",
+          "description": "Number of orders placed"
+        },
+        "totalSpent": {
+          "type": "number",
+          "description": "Total amount spent in INR"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of account creation"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "ISO timestamp of last account update"
+        }
+      },
+      "required": ["uid", "name", "email", "role", "status"]
+    },
     "User": {
       "title": "User",
       "description": "User profile and account information stored in Firestore",
@@ -53,6 +117,10 @@
     }
   },
   "firestore": {
+    "/customers/{customerId}": {
+      "schema": "Customer",
+      "description": "Customer profile collection indexed by Firebase Auth UID"
+    },
     "/users/{userId}": {
       "schema": "User",
       "description": "User profile collection indexed by Firebase Auth UID"

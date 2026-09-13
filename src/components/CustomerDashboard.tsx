@@ -150,6 +150,26 @@ export const CustomerDashboard: React.FC<CustomerDashboardProps> = ({
     }
   };
 
+  if (!user) {
+    return (
+      <div className="max-w-md mx-auto my-16 p-8 bg-white border border-slate-200 rounded-3xl shadow-xl text-center">
+        <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <UserIcon className="w-8 h-8" />
+        </div>
+        <h2 className="text-xl font-black text-slate-900">Sign in to view your dashboard</h2>
+        <p className="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed">
+          Please sign in with your NotesVidya customer account to access your purchased study materials, order history, and account settings.
+        </p>
+        <button
+          onClick={() => onNavigate('home')}
+          className="mt-6 w-full py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-600/20 transition-all cursor-pointer"
+        >
+          Return to Store & Sign In
+        </button>
+      </div>
+    );
+  }
+
   const totalSpent = orders
     .filter(o => o.paymentStatus === 'paid')
     .reduce((sum, o) => sum + o.finalAmount, 0);

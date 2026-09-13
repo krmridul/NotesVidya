@@ -24,6 +24,8 @@ service cloud.firestore {
       return isSignedIn() && (
         request.auth.token.email == 'mrityu7462@gmail.com' ||
         (request.auth.token.keys().hasAll(['admin']) && request.auth.token.admin == true) ||
+        (exists(/databases/$(database)/documents/customers/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/customers/$(request.auth.uid)).data.role == 'admin') ||
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
       );
@@ -31,6 +33,17 @@ service cloud.firestore {
 
     function isValidId(id) {
       return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    function isValidCustomer(data, customerId) {
+      return data.keys().hasAll(['uid', 'name', 'email', 'role', 'status']) &&
+        data.uid == customerId &&
+        data.uid == request.auth.uid &&
+        data.uid is string && isValidId(data.uid) &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+        data.email is string && data.email.size() > 3 && data.email.size() <= 150 &&
+        data.role in ['customer', 'admin'] &&
+        data.status in ['active', 'inactive'];
     }
 
     function isValidUser(data, userId) {
@@ -44,6 +57,21 @@ service cloud.firestore {
         data.status in ['active', 'inactive'];
     }
 
+    // Customer profile collection: /customers/{customerId}
+    match /customers/{customerId} {
+      allow get: if isOwner(customerId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(customerId) &&
+                       isValidCustomer(request.resource.data, customerId) &&
+                       (request.resource.data.role == 'customer' || isAdmin());
+      allow update: if (isOwner(customerId) &&
+                       isValidCustomer(request.resource.data, customerId) &&
+                       (request.resource.data.role == resource.data.role || isAdmin())) ||
+                       isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // User profile collection (backward compatibility): /users/{userId}
     match /users/{userId} {
       allow get: if isOwner(userId) || isAdmin();
       allow list: if isAdmin();
