@@ -44,6 +44,12 @@ async function request<T>(endpoint: string, options: RequestOptions = {}, retryC
       // ignore
     }
   }
+  if (!token && typeof window !== 'undefined') {
+    const stored = localStorage.getItem('dps_token');
+    if (stored) {
+      token = stored;
+    }
+  }
   const headers: Record<string, string> = {
     'Accept': 'application/json',
     ...((options.headers as Record<string, string>) || {})

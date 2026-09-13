@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types.js';
+import { api } from '../lib/api.js';
 import {
   auth,
   googleProvider,
@@ -44,12 +45,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Validate connection to Firestore as required by Firebase instructions
     testFirestoreConnection();
 
+    // Check for existing saved token if Firebase hasn't loaded a user
+    const savedToken = typeof window !== 'undefined' ? localStorage.getItem('dps_token') : null;
+
     // Listen to real Firebase Authentication state changes
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         try {
           const idToken = await firebaseUser.getIdToken();
           setToken(idToken);
+          localStorage.setItem('dps_token', idToken);
 
           // Retrieve user document from Cloud Firestore
           let profile = await getUserFromFirestore(firebaseUser.uid);
@@ -81,11 +86,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           };
           setUser(fallbackUser);
         }
+        setLoading(false);
       } else {
-        setUser(null);
-        setToken(null);
+        // If not authenticated via Firebase, check if there's a valid local session token
+        if (savedToken) {
+          api.getMe()
+            .then(res => {
+              if (res?.user) {
+                setUser(res.user);
+                setToken(savedToken);
+              } else {
+                localStorage.removeItem('dps_token');
+                setUser(null);
+                setToken(null);
+              }
+            })
+            .catch(() => {
+              localStorage.removeItem('dps_token');
+              setUser(null);
+              setToken(null);
+            })
+            .finally(() => {
+              setLoading(false);
+            });
+        } else {
+          setUser(null);
+          setToken(null);
+          setLoading(false);
+        }
       }
-      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -94,19 +123,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
-      const idToken = await userCredential.user.getIdToken();
-      setToken(idToken);
+      let firebaseSuccess = false;
+      try {
+        const userCredential = await signInWithEmailAndPassword(auth, email.trim(), password);
+        const idToken = await userCredential.user.getIdToken();
+        setToken(idToken);
+        localStorage.setItem('dps_token', idToken);
 
-      let profile = await getUserFromFirestore(userCredential.user.uid);
-      if (!profile) {
-        profile = await saveUserToFirestore(userCredential.user);
+        let profile = await getUserFromFirestore(userCredential.user.uid);
+        if (!profile) {
+          profile = await saveUserToFirestore(userCredential.user);
+        }
+        if (isSystemAdminEmail(userCredential.user.email) && profile.role !== 'admin') {
+          profile = { ...profile, role: 'admin' };
+          await updateUserInFirestore(profile.id, { role: 'admin' });
+        }
+        setUser(profile);
+        firebaseSuccess = true;
+      } catch (fbErr: any) {
+        // Fallback to server API if Firebase email/password provider is not configured
+        console.warn('Firebase signIn notice (attempting backend authentication):', fbErr?.code || fbErr?.message);
       }
-      if (isSystemAdminEmail(userCredential.user.email) && profile.role !== 'admin') {
-        profile = { ...profile, role: 'admin' };
-        await updateUserInFirestore(profile.id, { role: 'admin' });
+
+      if (!firebaseSuccess) {
+        const res = await api.login({ email: email.trim(), password });
+        setToken(res.token);
+        localStorage.setItem('dps_token', res.token);
+        setUser(res.user);
       }
-      setUser(profile);
     } finally {
       setLoading(false);
     }
@@ -118,6 +162,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const userCredential = await signInWithPopup(auth, googleProvider);
       const idToken = await userCredential.user.getIdToken();
       setToken(idToken);
+      localStorage.setItem('dps_token', idToken);
 
       let profile = await getUserFromFirestore(userCredential.user.uid);
       if (!profile) {
@@ -136,25 +181,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (data: { name: string; email: string; phone: string; password: string; confirmPassword?: string }) => {
     setLoading(true);
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, data.email.trim(), data.password);
-      if (data.name) {
-        try {
-          await updateProfile(userCredential.user, { displayName: data.name.trim() });
-        } catch {
-          // ignore profile update error
+      let registered = false;
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, data.email.trim(), data.password);
+        if (data.name) {
+          try {
+            await updateProfile(userCredential.user, { displayName: data.name.trim() });
+          } catch {
+            // ignore profile update error
+          }
         }
+
+        const isAdmin = isSystemAdminEmail(data.email);
+        const profile = await saveUserToFirestore(userCredential.user, {
+          name: data.name.trim(),
+          phone: data.phone.trim(),
+          role: isAdmin ? 'admin' : 'customer'
+        });
+
+        const idToken = await userCredential.user.getIdToken();
+        setToken(idToken);
+        localStorage.setItem('dps_token', idToken);
+        setUser(profile);
+        registered = true;
+      } catch (fbErr: any) {
+        console.warn('Firebase registration notice (attempting backend registration):', fbErr?.code || fbErr?.message);
       }
 
-      const isAdmin = isSystemAdminEmail(data.email);
-      const profile = await saveUserToFirestore(userCredential.user, {
-        name: data.name.trim(),
-        phone: data.phone.trim(),
-        role: isAdmin ? 'admin' : 'customer'
-      });
-
-      const idToken = await userCredential.user.getIdToken();
-      setToken(idToken);
-      setUser(profile);
+      if (!registered) {
+        const res = await api.register(data);
+        setToken(res.token);
+        localStorage.setItem('dps_token', res.token);
+        setUser(res.user);
+      }
     } finally {
       setLoading(false);
     }
@@ -163,24 +222,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const setupAdmin = async (data: { name: string; email: string; phone: string; password: string }) => {
     setLoading(true);
     try {
-      const userCredential = await createUserWithEmailAndPassword(auth, data.email.trim(), data.password);
-      if (data.name) {
-        try {
-          await updateProfile(userCredential.user, { displayName: data.name.trim() });
-        } catch {
-          // ignore
+      let created = false;
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, data.email.trim(), data.password);
+        if (data.name) {
+          try {
+            await updateProfile(userCredential.user, { displayName: data.name.trim() });
+          } catch {
+            // ignore
+          }
         }
+
+        const profile = await saveUserToFirestore(userCredential.user, {
+          name: data.name.trim(),
+          phone: data.phone.trim(),
+          role: 'admin'
+        });
+
+        const idToken = await userCredential.user.getIdToken();
+        setToken(idToken);
+        localStorage.setItem('dps_token', idToken);
+        setUser(profile);
+        created = true;
+      } catch (fbErr) {
+        console.warn('Firebase admin creation notice (attempting backend setup):', fbErr);
       }
 
-      const profile = await saveUserToFirestore(userCredential.user, {
-        name: data.name.trim(),
-        phone: data.phone.trim(),
-        role: 'admin'
-      });
-
-      const idToken = await userCredential.user.getIdToken();
-      setToken(idToken);
-      setUser(profile);
+      if (!created) {
+        const res = await api.setupAdmin(data);
+        setToken(res.token);
+        localStorage.setItem('dps_token', res.token);
+        setUser(res.user);
+      }
     } finally {
       setLoading(false);
     }
@@ -192,13 +265,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const setAuthSession = (authenticatedUser: User, sessionToken: string) => {
     setToken(sessionToken);
+    localStorage.setItem('dps_token', sessionToken);
     setUser(authenticatedUser);
   };
 
   const logout = async () => {
     try {
       await fbSignOut(auth);
+    } catch {
+      // ignore
     } finally {
+      localStorage.removeItem('dps_token');
       setToken(null);
       setUser(null);
     }

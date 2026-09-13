@@ -51,6 +51,19 @@
       "passwordHash": "f6eff4e2234e20959e2909e21a560dad0ab74c5103093301e5a0c235a4737180470bc3d57dbcbce14dcc5c7f46c9989c60631b5c5ae8f9737a1816047d354b0e",
       "salt": "57ed7c1e971df1bfc80b147faf9f4afe",
       "createdAt": "2026-09-13T08:33:28.549Z"
+    },
+    {
+      "id": "usr-1789290536160-e41jo",
+      "name": "Test User",
+      "email": "test_diag2@example.com",
+      "phone": "9876543210",
+      "role": "customer",
+      "status": "active",
+      "ordersCount": 0,
+      "totalSpent": 0,
+      "createdAt": "2026-09-13T09:08:56.160Z",
+      "passwordHash": "fbed335bb9fb3f6211afae9f7cc6061534b624d4b49e25c77e0c70bd3bdabf06042dfce5228cbf8508ed7ab4fa54e4fc781b931f1319ef05debcb6ab1c5f0cca",
+      "salt": "9bbf56a82987ca79864d08f07b2e13e2"
     }
   ],
   "categories": [

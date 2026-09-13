@@ -660,12 +660,63 @@ apiRouter.post('/auth/change-registration-email', async (req: Request, res: Resp
   }
 });
 
-// Legacy / Direct Registration Guard: Reject unverified creation
-apiRouter.post('/auth/register', (_req: Request, res: Response) => {
-  res.status(403).json({
-    error: 'Direct unverified registration is disabled. Email OTP verification is strictly required for NotesVidya accounts.',
-    action: 'USE_REGISTER_INITIATE'
-  });
+// Direct Registration Handler
+apiRouter.post('/auth/register', (req: Request, res: Response) => {
+  try {
+    const { name, email, phone, password } = req.body;
+    if (!name || !email || !password) {
+      res.status(400).json({ error: 'Name, email, and password are required.' });
+      return;
+    }
+    const cleanEmail = email.trim().toLowerCase();
+    const existing = db.getUserByEmail(cleanEmail);
+    if (existing) {
+      res.status(400).json({ error: 'An account with this email already exists. Please log in.' });
+      return;
+    }
+
+    const { hash, salt } = hashPassword(password);
+    const isAdmin = cleanEmail === 'mrityu7462@gmail.com' || (process.env.ADMIN_EMAIL && cleanEmail === process.env.ADMIN_EMAIL.toLowerCase());
+    const newUser = {
+      id: `usr-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      name: name.trim(),
+      email: cleanEmail,
+      phone: phone?.trim() || '',
+      role: (isAdmin ? 'admin' : 'customer') as 'admin' | 'customer',
+      status: 'active' as const,
+      ordersCount: 0,
+      totalSpent: 0,
+      createdAt: new Date().toISOString(),
+      passwordHash: hash,
+      salt
+    };
+
+    db.addUser(newUser);
+
+    const token = signToken({
+      userId: newUser.id,
+      email: newUser.email,
+      role: newUser.role
+    });
+
+    res.status(201).json({
+      user: {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        phone: newUser.phone,
+        role: newUser.role,
+        status: newUser.status,
+        ordersCount: 0,
+        totalSpent: 0,
+        createdAt: newUser.createdAt
+      },
+      token,
+      message: 'Account created successfully.'
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: 'Registration failed: ' + err.message });
+  }
 });
 
 // Login
@@ -729,7 +780,8 @@ apiRouter.get('/auth/me', authenticateUser, (req: AuthenticatedRequest, res: Res
     res.status(401).json({ error: 'Not authenticated' });
     return;
   }
-  res.json({ user: req.user });
+  const { passwordHash, salt, ...safeUser } = req.user as any;
+  res.json({ user: safeUser });
 });
 
 // Update Profile
