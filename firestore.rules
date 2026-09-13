@@ -1,0 +1,50 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'mrityu7462@gmail.com' ||
+        (request.auth.token.keys().hasAll(['admin']) && request.auth.token.admin == true) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidUser(data, userId) {
+      return data.keys().hasAll(['id', 'name', 'email', 'role', 'status']) &&
+        data.id == userId &&
+        data.id == request.auth.uid &&
+        data.id is string && isValidId(data.id) &&
+        data.name is string && data.name.size() > 0 && data.name.size() <= 100 &&
+        data.email is string && data.email.size() > 3 && data.email.size() <= 150 &&
+        data.role in ['customer', 'admin'] &&
+        data.status in ['active', 'inactive'];
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) || isAdmin();
+      allow list: if isAdmin();
+      allow create: if isOwner(userId) &&
+                       isValidUser(request.resource.data, userId) &&
+                       (request.resource.data.role == 'customer' || isAdmin());
+      allow update: if (isOwner(userId) &&
+                       isValidUser(request.resource.data, userId) &&
+                       (request.resource.data.role == resource.data.role || isAdmin())) ||
+                       isAdmin();
+      allow delete: if isAdmin();
+    }
+  }
+}

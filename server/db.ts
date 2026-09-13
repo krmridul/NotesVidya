@@ -92,11 +92,34 @@ const INITIAL_SETTINGS: StoreSettings = {
 class Database {
   private data: DatabaseSchema;
   private pgPool: pg.Pool | null = null;
+  private lastMtime: number = 0;
 
   constructor() {
     this.data = this.loadInitial();
     this.initPostgresIfAvailable();
     this.ensureAdminFromEnv();
+  }
+
+  public syncFromFileIfNeeded(): void {
+    try {
+      if (fs.existsSync(DB_FILE)) {
+        const stat = fs.statSync(DB_FILE);
+        if (stat.mtimeMs > this.lastMtime) {
+          const raw = fs.readFileSync(DB_FILE, 'utf-8');
+          const parsed = JSON.parse(raw);
+          if (parsed && typeof parsed === 'object') {
+            this.data = {
+              ...this.data,
+              ...parsed,
+              settings: { ...this.data.settings, ...(parsed.settings || {}) }
+            };
+            this.lastMtime = stat.mtimeMs;
+          }
+        }
+      }
+    } catch {
+      // Ignore concurrent file access race
+    }
   }
 
   private loadInitial(): DatabaseSchema {
@@ -231,6 +254,9 @@ class Database {
       const tempFile = `${DB_FILE}.tmp`;
       fs.writeFileSync(tempFile, JSON.stringify(this.data, null, 2), 'utf-8');
       fs.renameSync(tempFile, DB_FILE);
+      if (fs.existsSync(DB_FILE)) {
+        this.lastMtime = fs.statSync(DB_FILE).mtimeMs;
+      }
     } catch (err) {
       console.error('Error saving database to file:', err);
     }
@@ -267,10 +293,12 @@ class Database {
   }
 
   getUserByEmail(email: string) {
+    this.syncFromFileIfNeeded();
     return this.data.users.find(u => u.email.toLowerCase() === email.toLowerCase().trim());
   }
 
   addUser(user: User & { passwordHash: string; salt: string }) {
+    this.syncFromFileIfNeeded();
     this.data.users.push(user);
     this.save();
     return user;
@@ -298,11 +326,13 @@ class Database {
 
   // Pending Registrations (Email OTP)
   getPendingRegistrations(): PendingRegistration[] {
+    this.syncFromFileIfNeeded();
     this.cleanupExpiredPendingRegistrations();
     return this.data.pendingRegistrations || [];
   }
 
   getPendingRegistration(idOrEmail: string): PendingRegistration | undefined {
+    this.syncFromFileIfNeeded();
     this.cleanupExpiredPendingRegistrations();
     const query = idOrEmail.toLowerCase().trim();
     return (this.data.pendingRegistrations || []).find(

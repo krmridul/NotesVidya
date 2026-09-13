@@ -53,8 +53,20 @@ export function getEmailProviderStatus() {
   if (brevoApiKey) provider = 'brevo';
   else if (smtpHost) provider = 'smtp';
 
-  const fromAddress = process.env.EMAIL_FROM || settings.emailSenderAddress || 'support@notesvidya.com';
-  const fromName = process.env.EMAIL_FROM_NAME || settings.emailSenderName || 'NotesVidya';
+  const fromAddress =
+    process.env.BREVO_SENDER_EMAIL ||
+    process.env.EMAIL_FROM ||
+    process.env.SENDER_EMAIL ||
+    settings.brevoSenderEmail ||
+    settings.emailSenderAddress ||
+    settings.contactEmail ||
+    'support@notesvidya.com';
+  const fromName =
+    process.env.BREVO_SENDER_NAME ||
+    process.env.EMAIL_FROM_NAME ||
+    settings.brevoSenderName ||
+    settings.emailSenderName ||
+    'NotesVidya';
 
   return {
     isConfigured: provider !== 'none',
@@ -136,7 +148,7 @@ async function sendViaBrevo(
         lowerDetail.includes('authorized_ips'))
     ) {
       const ipMatch = errorDetail.match(/address\s+([a-fA-F0-9:.]+)/i);
-      const detectedIp = ipMatch ? ipMatch[1] : '';
+      const detectedIp = ipMatch ? ipMatch[1].replace(/[.,;:)]+$/, '') : '';
       throw new EmailServiceError(
         'BREVO_IP_NOT_AUTHORIZED',
         `Brevo API rejected delivery with HTTP 401: We have detected you are using an unrecognised IP address ${detectedIp}. If you performed this action make sure to add the new IP address or turn OFF "Authorized IP addresses" in your Brevo security settings: https://app.brevo.com/security/authorised_ips`,
@@ -194,8 +206,23 @@ export async function sendTransactionalEmail(options: SendEmailOptions): Promise
   const settings = db.getSettings();
 
   const brevoApiKey = process.env.BREVO_API_KEY || settings.brevoApiKey;
-  const fromName = options.fromName || process.env.EMAIL_FROM_NAME || settings.emailSenderName || 'NotesVidya';
-  const rawFrom = options.fromEmail || process.env.EMAIL_FROM || settings.emailSenderAddress || 'support@notesvidya.com';
+  const fromName =
+    options.fromName ||
+    process.env.BREVO_SENDER_NAME ||
+    process.env.EMAIL_FROM_NAME ||
+    settings.brevoSenderName ||
+    settings.emailSenderName ||
+    'NotesVidya';
+
+  const rawFrom =
+    options.fromEmail ||
+    process.env.BREVO_SENDER_EMAIL ||
+    process.env.EMAIL_FROM ||
+    process.env.SENDER_EMAIL ||
+    settings.brevoSenderEmail ||
+    settings.emailSenderAddress ||
+    settings.contactEmail ||
+    'support@notesvidya.com';
   const cleanFromEmail = extractEmailAddress(rawFrom);
 
   // 1. Primary & required provider: Brevo API
@@ -233,7 +260,7 @@ export async function sendTransactionalEmail(options: SendEmailOptions): Promise
           );
           return { provider: 'smtp', id: info.messageId };
         } catch (smtpErr: any) {
-          console.error('SMTP fallback also failed:', smtpErr.message);
+          console.warn('SMTP fallback also failed:', smtpErr.message);
         }
       }
       throw brevoErr;

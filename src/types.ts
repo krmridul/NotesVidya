@@ -190,6 +190,8 @@ export interface StoreSettings {
   // Email provider configuration (Brevo Transactional Email)
   emailProvider?: 'brevo' | 'smtp';
   brevoApiKey?: string;
+  brevoSenderEmail?: string;
+  brevoSenderName?: string;
   smtpHost?: string;
   smtpPort?: number;
   smtpUser?: string;
@@ -221,6 +223,7 @@ export interface PendingRegistration {
   lastOtpSentAt: number;
   emailVerified: boolean;
   createdAt: string;
+  deliveryRestricted?: boolean;
 }
 
 export interface AnalyticsSummary {

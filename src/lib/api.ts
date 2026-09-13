@@ -12,6 +12,7 @@ import {
   EmailNotification,
   DashboardStats
 } from '../types.js';
+import { auth } from './firebase.js';
 
 const API_BASE = '/api';
 
@@ -19,9 +20,32 @@ interface RequestOptions extends RequestInit {
   token?: string;
 }
 
-async function request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-  const token = options.token || localStorage.getItem('dps_token');
+function normalizeUrl(endpoint: string): string {
+  const trimmed = endpoint.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed;
+  }
+  if (trimmed.startsWith('/api/')) {
+    return trimmed;
+  }
+  if (trimmed === '/api') {
+    return '/api';
+  }
+  const cleanPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  return `${API_BASE}${cleanPath}`;
+}
+
+async function request<T>(endpoint: string, options: RequestOptions = {}, retryCount = 0): Promise<T> {
+  let token = options.token;
+  if (!token && auth.currentUser) {
+    try {
+      token = await auth.currentUser.getIdToken();
+    } catch {
+      // ignore
+    }
+  }
   const headers: Record<string, string> = {
+    'Accept': 'application/json',
     ...((options.headers as Record<string, string>) || {})
   };
 
@@ -34,17 +58,25 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
+  const url = normalizeUrl(endpoint);
+  const response = await fetch(url, {
     ...options,
     headers
   });
+
+  const contentType = response.headers.get('content-type') || '';
 
   if (!response.ok) {
     let errorMessage = 'An unexpected server error occurred';
     let errorData: any = {};
     try {
-      errorData = await response.json();
-      errorMessage = errorData.error || errorData.message || errorMessage;
+      if (contentType.includes('application/json')) {
+        errorData = await response.json();
+        errorMessage = errorData.error || errorData.message || errorMessage;
+      } else {
+        const text = await response.text();
+        errorMessage = text && !text.startsWith('<') ? text : `Server returned ${response.status} ${response.statusText}`;
+      }
     } catch {
       errorMessage = `Server returned ${response.status} ${response.statusText}`;
     }
@@ -58,7 +90,20 @@ async function request<T>(endpoint: string, options: RequestOptions = {}): Promi
     throw err;
   }
 
-  return response.json();
+  if (contentType.includes('application/json')) {
+    return response.json();
+  }
+  const text = await response.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    // If the server returned HTML (e.g. during dev server compilation or temporary reload), retry up to 2 times
+    if (retryCount < 2 && (contentType.includes('text/html') || text.trim().startsWith('<'))) {
+      await new Promise(res => setTimeout(res, 400));
+      return request<T>(endpoint, options, retryCount + 1);
+    }
+    throw new Error(`Expected JSON response from ${endpoint} but server returned non-JSON format (${response.status})`);
+  }
 }
 
 export const api = {
@@ -86,7 +131,19 @@ export const api = {
 
   // Email OTP Registration
   initiateRegistration: (body: { name: string; email: string; phone: string; password: string; confirmPassword?: string }) =>
-    request<{ success: boolean; registrationId: string; email: string; expiresAt: number; message: string }>('/auth/register-initiate', {
+    request<{
+      success: boolean;
+      registrationId: string;
+      email: string;
+      expiresAt: number;
+      message: string;
+      emailDeliveryWarning?: {
+        isIpRestricted: boolean;
+        detectedIp?: string;
+        actionUrl?: string;
+        message: string;
+      };
+    }>('/auth/register-initiate', {
       method: 'POST',
       body: JSON.stringify(body)
     }),
@@ -98,13 +155,34 @@ export const api = {
     }),
 
   resendOtp: (body: { registrationId?: string; email?: string }) =>
-    request<{ success: boolean; expiresAt: number; message: string }>('/auth/resend-otp', {
+    request<{
+      success: boolean;
+      expiresAt: number;
+      message: string;
+      emailDeliveryWarning?: {
+        isIpRestricted: boolean;
+        detectedIp?: string;
+        actionUrl?: string;
+        message: string;
+      };
+    }>('/auth/resend-otp', {
       method: 'POST',
       body: JSON.stringify(body)
     }),
 
   changeRegistrationEmail: (body: { registrationId?: string; oldEmail?: string; newEmail: string }) =>
-    request<{ success: boolean; email: string; expiresAt: number; message: string }>('/auth/change-registration-email', {
+    request<{
+      success: boolean;
+      email: string;
+      expiresAt: number;
+      message: string;
+      emailDeliveryWarning?: {
+        isIpRestricted: boolean;
+        detectedIp?: string;
+        actionUrl?: string;
+        message: string;
+      };
+    }>('/auth/change-registration-email', {
       method: 'POST',
       body: JSON.stringify(body)
     }),
@@ -162,8 +240,9 @@ export const api = {
     if (params.page) query.set('page', params.page.toString());
     if (params.limit) query.set('limit', params.limit.toString());
 
+    const qs = query.toString();
     return request<{ products: Product[]; pagination?: { page: number; limit: number; totalItems: number; totalPages: number } }>(
-      `/products?${query.toString()}`
+      qs ? `/products?${qs}` : '/products'
     );
   },
 

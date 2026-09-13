@@ -38,6 +38,19 @@
       "passwordHash": "testhash",
       "salt": "testsalt",
       "createdAt": "2026-09-13T04:41:43.137Z"
+    },
+    {
+      "id": "user-1789288408549-5316157b",
+      "name": "Test Customer",
+      "email": "testuser_1789288407770@example.com",
+      "phone": "+91 9876543210",
+      "role": "customer",
+      "status": "active",
+      "ordersCount": 0,
+      "totalSpent": 0,
+      "passwordHash": "f6eff4e2234e20959e2909e21a560dad0ab74c5103093301e5a0c235a4737180470bc3d57dbcbce14dcc5c7f46c9989c60631b5c5ae8f9737a1816047d354b0e",
+      "salt": "57ed7c1e971df1bfc80b147faf9f4afe",
+      "createdAt": "2026-09-13T08:33:28.549Z"
     }
   ],
   "categories": [
@@ -168,8 +181,132 @@
       "productCount": 0
     }
   ],
-  "products": [],
-  "orders": [],
+  "products": [
+    {
+      "id": "prod-1789279746164",
+      "title": "STET 2026 SYLLABUS",
+      "slug": "stet-2026-syllabus",
+      "description": "",
+      "categoryId": "cat-9",
+      "categoryName": "Computer",
+      "author": "E CONTENT",
+      "language": "English & Hindi",
+      "pages": 1,
+      "fileSize": "0.0 MB",
+      "originalPrice": 49,
+      "sellingPrice": 11,
+      "discount": 78,
+      "rating": 5,
+      "reviewCount": 0,
+      "purchaseCount": 0,
+      "downloadCount": 0,
+      "thumbnail": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80",
+      "previewSamplePages": [
+        {
+          "pageNumber": 1,
+          "title": "Sample Chapter Blueprint",
+          "excerpt": "Key conceptual formula sheet sample.",
+          "watermarkNotice": "SAMPLE ONLY"
+        }
+      ],
+      "pdfFileKey": "Bihar_STET_2026_Syllabus_Overview_1789279706318_9a676982.pdf",
+      "status": "published",
+      "availability": "available",
+      "featured": true,
+      "bestseller": false,
+      "tags": [
+        "2025 Exam",
+        "Study Notes"
+      ],
+      "keywords": [],
+      "publishedDate": "2026-09-13",
+      "createdAt": "2026-09-13T06:09:06.164Z",
+      "updatedAt": "2026-09-13T06:13:12.460Z"
+    }
+  ],
+  "orders": [
+    {
+      "id": "ord-1789280454156",
+      "orderNumber": "ORD-2026-454156",
+      "userId": "user-1789272350109-ahsu",
+      "customerName": "mohan kumar",
+      "customerEmail": "mohankumar@gmail.com",
+      "customerPhone": "7462852967",
+      "items": [
+        {
+          "productId": "prod-1789279746164",
+          "title": "STET 2026 SYLLABUS",
+          "thumbnail": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80",
+          "price": 11,
+          "categoryName": "Computer"
+        }
+      ],
+      "subtotal": 11,
+      "discount": 0,
+      "couponDiscount": 0,
+      "finalAmount": 11,
+      "paymentStatus": "pending",
+      "orderStatus": "pending",
+      "paymentGateway": "Razorpay",
+      "paymentMethod": "UPI / NetBanking / Cards",
+      "paymentId": "",
+      "createdAt": "2026-09-13T06:20:54.156Z"
+    },
+    {
+      "id": "ord-1789280270296",
+      "orderNumber": "ORD-2026-270296",
+      "userId": "usr-admin-1789272168730",
+      "customerName": "MRIDUL SHARMA",
+      "customerEmail": "mrityu7462@gmail.com",
+      "customerPhone": "6206455413",
+      "items": [
+        {
+          "productId": "prod-1789279746164",
+          "title": "STET 2026 SYLLABUS",
+          "thumbnail": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80",
+          "price": 11,
+          "categoryName": "Computer"
+        }
+      ],
+      "subtotal": 11,
+      "discount": 0,
+      "couponDiscount": 0,
+      "finalAmount": 11,
+      "paymentStatus": "pending",
+      "orderStatus": "pending",
+      "paymentGateway": "Razorpay",
+      "paymentMethod": "UPI / NetBanking / Cards",
+      "paymentId": "",
+      "createdAt": "2026-09-13T06:17:50.296Z"
+    },
+    {
+      "id": "ord-1789280240802",
+      "orderNumber": "ORD-2026-240802",
+      "userId": "usr-admin-1789272168730",
+      "customerName": "MRIDUL SHARMA",
+      "customerEmail": "mrityu7462@gmail.com",
+      "customerPhone": "6206455413",
+      "items": [
+        {
+          "productId": "prod-1789279746164",
+          "title": "STET 2026 SYLLABUS",
+          "thumbnail": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?auto=format&fit=crop&w=600&q=80",
+          "price": 11,
+          "categoryName": "Computer"
+        }
+      ],
+      "subtotal": 11,
+      "discount": 0,
+      "couponDiscount": 0,
+      "finalAmount": 11,
+      "paymentStatus": "pending",
+      "orderStatus": "pending",
+      "paymentGateway": "Razorpay",
+      "paymentMethod": "UPI / NetBanking / Cards",
+      "paymentId": "",
+      "createdAt": "2026-09-13T06:17:20.802Z"
+    }
+  ],
   "payments": [],
   "downloads": [],
   "coupons": [],
@@ -242,5 +379,40 @@
       "sentAt": "2026-09-13T05:19:06.698Z"
     }
   ],
-  "pendingRegistrations": []
+  "pendingRegistrations": [
+    {
+      "id": "preg-1789288411736-8e137466",
+      "name": "Test Customer 2",
+      "email": "testuser_1789288411598@example.com",
+      "phone": "+91 9876543210",
+      "passwordHash": "03bed54fc4db7c81572700dbd28a1d2723a99d6694c29d70069888ad4c9cb6912a8d17469b7a21e40aca884c927bee55c7aa7d1377cd65bdb71c486ed24877a2",
+      "salt": "ee8b3a64e22c6cc599ce194b68d71466",
+      "otpHash": "78cada91354210875918fb09b00a0156e0ac4a04f09dcf21109d568386c03af9",
+      "otpSalt": "e6f566d80d4354e7478e0aa297722e8a",
+      "otpExpiresAt": 1789289011736,
+      "otpAttempts": 1,
+      "resendCount": 1,
+      "lastOtpSentAt": 1789288411736,
+      "emailVerified": false,
+      "createdAt": "2026-09-13T08:33:31.736Z",
+      "deliveryRestricted": true
+    },
+    {
+      "id": "preg-1789288414815-677b763c",
+      "name": "Test Customer 3",
+      "email": "testuser_1789288414683@example.com",
+      "phone": "+91 9876543210",
+      "passwordHash": "cce9100a5ce741cbc71d2d402f4927bee22335fdbfb8c059a0a4f3f5004ea429ad916c4395a7bcbce7c5494f99a5890706a4b1ae73342b50da425d0f65ccfe4b",
+      "salt": "a385d5473afd64791e67884bd39287f0",
+      "otpHash": "8a48a227864ed9975ddd00f0cb4813916a1b56f11c8fbcef89eade4a988fb6a6",
+      "otpSalt": "1372d0511ff1cb19bd5dd551113a678f",
+      "otpExpiresAt": 1789289014815,
+      "otpAttempts": 0,
+      "resendCount": 1,
+      "lastOtpSentAt": 1789288414815,
+      "emailVerified": false,
+      "createdAt": "2026-09-13T08:33:34.815Z",
+      "deliveryRestricted": true
+    }
+  ]
 }

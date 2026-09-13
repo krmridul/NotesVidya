@@ -1,0 +1,61 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and account information stored in Firestore",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "User unique identifier matching Firebase Auth UID",
+          "maxLength": 128
+        },
+        "name": {
+          "type": "string",
+          "description": "Full name of the user",
+          "maxLength": 100
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Email address of the user",
+          "maxLength": 150
+        },
+        "phone": {
+          "type": "string",
+          "description": "Contact phone number of the user",
+          "maxLength": 30
+        },
+        "role": {
+          "type": "string",
+          "enum": ["customer", "admin"],
+          "description": "Role of the user in the system"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "inactive"],
+          "description": "Account status"
+        },
+        "ordersCount": {
+          "type": "number",
+          "description": "Number of orders placed"
+        },
+        "totalSpent": {
+          "type": "number",
+          "description": "Total amount spent in INR"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "ISO timestamp of account creation"
+        }
+      },
+      "required": ["id", "name", "email", "role", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile collection indexed by Firebase Auth UID"
+    }
+  }
+}
