@@ -1,0 +1,246 @@
+{
+  "users": [
+    {
+      "id": "usr-admin-1789272168730",
+      "name": "MRIDUL SHARMA",
+      "email": "mrityu7462@gmail.com",
+      "phone": "6206455413",
+      "role": "admin",
+      "status": "active",
+      "ordersCount": 0,
+      "totalSpent": 0,
+      "createdAt": "2026-09-13T04:02:48.730Z",
+      "passwordHash": "cd14399688d30bb0a01ed1ea3424e51ae44ef90565b3c4b2ce8488be0f82f40886be5aecd8ee6719fcf765afe4706bf5d39665775f74e247e66de64acdb5d301",
+      "salt": "70af68d58d2a4a0e7585a8cd7adc5a6b"
+    },
+    {
+      "id": "user-1789272350109-ahsu",
+      "name": "mohan kumar",
+      "email": "mohankumar@gmail.com",
+      "phone": "7462852967",
+      "role": "customer",
+      "status": "active",
+      "ordersCount": 0,
+      "totalSpent": 0,
+      "passwordHash": "a037db7d3220a1ccc520e4a3d13b82bc30e750c4cf7895a9469b5085c1abe4e1a11c10c552122c40ada7c3d4ba6893bb6eff74a03245e7f13e40b8ed648e8fd5",
+      "salt": "fbdc3e0068d8dd585abaa4a4ef3874e5",
+      "createdAt": "2026-09-13T04:05:50.109Z"
+    },
+    {
+      "id": "user-test-1789274503137",
+      "name": "Rohit Sharma",
+      "email": "student_1789274503134@example.com",
+      "phone": "+91 9876543210",
+      "role": "customer",
+      "status": "active",
+      "ordersCount": 0,
+      "totalSpent": 0,
+      "passwordHash": "testhash",
+      "salt": "testsalt",
+      "createdAt": "2026-09-13T04:41:43.137Z"
+    }
+  ],
+  "categories": [
+    {
+      "id": "cat-1",
+      "name": "Competitive Exams",
+      "slug": "competitive-exams",
+      "description": "UPSC, SSC, Banking, Railways & State PSC exam materials",
+      "iconName": "GraduationCap",
+      "status": "active",
+      "productCount": 0
+    },
+    {
+      "id": "cat-2",
+      "name": "School Study Material",
+      "slug": "school-study-material",
+      "description": "Class 9th to 12th NCERT summaries, formulas & notes",
+      "iconName": "BookOpen",
+      "status": "active",
+      "productCount": 0
+    },
+    {
+      "id": "cat-3",
+      "name": "College Notes",
+      "slug": "college-notes",
+      "description": "B.Tech, BCA, B.Sc, B.Com, MBA course materials & guides",
+      "iconName": "Building2",
+      "status": "active",
+      "productCount": 0
+    },
+    {
+      "id": "cat-4",
+      "name": "E-Books",
+      "slug": "e-books",
+      "description": "Best-selling digital literature, skill mastery and guides",
+      "iconName": "BookmarkCheck",
+      "status": "active",
+      "productCount": 0
+    },
+    {
+      "id": "cat-5",
+      "name": "General Knowledge",
+      "slug": "general-knowledge",
+      "description": "Static GK, History, Geography, Polity & World affairs",
+      "iconName": "Globe",
+      "status": "active",
+      "productCount": 0
+    },
+    {
+      "id": "cat-6",
+      "name": "Previous Year Papers",
+      "slug": "previous-year-papers",
+      "description": "Last 10-15 years solved papers with step-by-step solutions",
+      "iconName": "FileText",
+      "status": "active",
+      "productCount": 0
+    },
+    {
+      "id": "cat-7",
+      "name": "Practice Sets",
+      "slug": "practice-sets",
+      "description": "High-probability mock papers and chapter tests with solutions",
+      "iconName": "CheckCircle2",
+      "status": "active",
+      "productCount": 0
+    },
+    {
+      "id": "cat-8",
+      "name": "Current Affairs",
+      "slug": "current-affairs",
+      "description": "Monthly capsules, one-liners, and MCQ compilations",
+      "iconName": "TrendingUp",
+      "status": "active",
+      "productCount": 0
+    },
+    {
+      "id": "cat-9",
+      "name": "Computer",
+      "slug": "computer",
+      "description": "Computer Awareness, IT literacy, DSA & programming handbooks",
+      "iconName": "Laptop",
+      "status": "active",
+      "productCount": 0
+    },
+    {
+      "id": "cat-10",
+      "name": "Mathematics",
+      "slug": "mathematics",
+      "description": "Quantitative Aptitude, Vedic Math tricks and formulas",
+      "iconName": "Calculator",
+      "status": "active",
+      "productCount": 0
+    },
+    {
+      "id": "cat-11",
+      "name": "Reasoning",
+      "slug": "reasoning",
+      "description": "Verbal, Non-Verbal & Analytical Reasoning workbooks",
+      "iconName": "Brain",
+      "status": "active",
+      "productCount": 0
+    },
+    {
+      "id": "cat-12",
+      "name": "English",
+      "slug": "english",
+      "description": "English Grammar rules, Vocabulary, Idioms and Comprehension",
+      "iconName": "Languages",
+      "status": "active",
+      "productCount": 0
+    },
+    {
+      "id": "cat-13",
+      "name": "Hindi",
+      "slug": "hindi",
+      "description": "Hindi Vyakaran, Sahitya, Sandhi, Samas & Comprehension",
+      "iconName": "PenTool",
+      "status": "active",
+      "productCount": 0
+    },
+    {
+      "id": "cat-14",
+      "name": "Other PDFs",
+      "slug": "other-pdfs",
+      "description": "Research papers, legal templates, self-help & miscellaneous",
+      "iconName": "FolderArchive",
+      "status": "active",
+      "productCount": 0
+    }
+  ],
+  "products": [],
+  "orders": [],
+  "payments": [],
+  "downloads": [],
+  "coupons": [],
+  "reviews": [],
+  "wishlists": [],
+  "settings": {
+    "websiteName": "NotesVidya",
+    "siteName": "NotesVidya",
+    "storeName": "NotesVidya",
+    "logoText": "NotesVidya",
+    "tagline": "Your Digital Library of Knowledge",
+    "contactEmail": "support@notesvidya.com",
+    "supportPhone": "+91 98765 43210",
+    "currency": "INR",
+    "currencySymbol": "₹",
+    "taxPercentage": 0,
+    "gatewayMode": "live",
+    "razorpayKeyId": "",
+    "allowGuestPreview": true,
+    "socialLinks": {},
+    "footerText": "© 2025 NotesVidya. All rights reserved.",
+    "privacyPolicy": "Your privacy is protected with end-to-end security.",
+    "termsConditions": "Purchased digital PDFs are licensed exclusively to the authenticated customer for personal study.",
+    "refundPolicy": "Due to the digital nature of instant PDF downloads, purchases are non-refundable once unlocked."
+  },
+  "emails": [
+    {
+      "id": "email-1789277606562-qynh",
+      "recipientEmail": "customer@example.com",
+      "recipientName": "Pooja Hegde",
+      "subject": "Your NotesVidya Verification OTP",
+      "type": "otp_verification",
+      "contentSnippet": "Account verification OTP dispatched (expires in 10 min). Provider: brevo",
+      "sentAt": "2026-09-13T05:33:26.562Z"
+    },
+    {
+      "id": "email-1789277590848-lff5",
+      "recipientEmail": "customer@example.com",
+      "recipientName": "Pooja Hegde",
+      "subject": "Your NotesVidya Verification OTP",
+      "type": "otp_verification",
+      "contentSnippet": "Account verification OTP dispatched (expires in 10 min). Provider: brevo",
+      "sentAt": "2026-09-13T05:33:10.848Z"
+    },
+    {
+      "id": "email-1789277250753-hntk",
+      "recipientEmail": "customer@example.com",
+      "recipientName": "Pooja Hegde",
+      "subject": "Verify your NotesVidya account",
+      "type": "otp_verification",
+      "contentSnippet": "Account verification OTP dispatched (expires in 10 min). Provider: brevo",
+      "sentAt": "2026-09-13T05:27:30.753Z"
+    },
+    {
+      "id": "email-1789276774687-n54q",
+      "recipientEmail": "customer@example.com",
+      "recipientName": "Pooja Hegde",
+      "subject": "Verify your NotesVidya account",
+      "type": "otp_verification",
+      "contentSnippet": "Account verification OTP dispatched (expires in 10 min). Provider: brevo",
+      "sentAt": "2026-09-13T05:19:34.687Z"
+    },
+    {
+      "id": "email-1789276746697-biay",
+      "recipientEmail": "customer@example.com",
+      "recipientName": "Pooja Hegde",
+      "subject": "Verify your NotesVidya account",
+      "type": "otp_verification",
+      "contentSnippet": "Account verification OTP dispatched (expires in 10 min). Provider: brevo",
+      "sentAt": "2026-09-13T05:19:06.698Z"
+    }
+  ],
+  "pendingRegistrations": []
+}
